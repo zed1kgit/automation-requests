@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Заявки на автоматизацию</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#17211d;--mute:#5d6b65;--line:#d9dfdc;--acc:#0f6b57;--accd:#0a4d3f;--err:#b3261e;--ok:#14663a}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#18211d;--ink:#e8eeeb;--mute:#97a69f;--line:#2b3832;--acc:#3fb596;--accd:#2f9a7e;--err:#ff8a80;--ok:#6fd79a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:1.35rem;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+label{display:block;font-weight:600;margin:12px 0 4px;font-size:.95rem}
+input,select,textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:120px;resize:vertical}
+:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+button{font:inherit;cursor:pointer;border-radius:8px;padding:10px 16px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:44px}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+@media(prefers-color-scheme:dark){button.pri{color:#0f1512}}
+button.pri:hover:not(:disabled){background:var(--accd)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.bar{display:grid;grid-template-columns:1fr 180px auto;gap:8px;margin-bottom:12px}
+.item{display:grid;gap:6px;padding:14px 16px;margin-bottom:8px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.item:hover{border-color:var(--acc)}
+.item b{font-size:1.02rem;word-break:break-word}
+.meta{display:flex;gap:8px 14px;flex-wrap:wrap;color:var(--mute);font-size:.9rem;align-items:center}
+.badge{padding:2px 10px;border-radius:99px;font-size:.85rem;font-weight:600;border:1px solid var(--line)}
+.s-new{color:#8a5a00;border-color:#8a5a00}.s-work{color:#1a5fb4;border-color:#1a5fb4}.s-done{color:var(--ok);border-color:var(--ok)}
+@media(prefers-color-scheme:dark){.s-new{color:#f0b84a;border-color:#f0b84a}.s-work{color:#7fb2ff;border-color:#7fb2ff}}
+.msg{padding:10px 12px;border-radius:8px;margin:12px 0;font-size:.95rem}
+.msg.err{color:var(--err);border:1px solid var(--err)}.msg.ok{color:var(--ok);border:1px solid var(--ok)}
+.empty{text-align:center;color:var(--mute);padding:32px 8px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(560px,calc(100vw - 24px));padding:20px;max-height:92vh}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.link{background:none;border:0;color:var(--acc);text-decoration:underline;padding:4px;min-height:0}
+.hide{display:none!important}
+@media(max-width:600px){.bar{grid-template-columns:1fr}.bar button{width:100%}.row button{flex:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Вход / регистрация -->
+<section id="auth" class="card hide" style="max-width:420px;margin:8vh auto 0">
+  <h1 id="authTitle">Вход</h1>
+  <form id="authForm" novalidate>
+    <label for="email">Электронная почта</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="pass">Пароль (минимум 6 символов)</label>
+    <input id="pass" type="password" autocomplete="current-password" minlength="6" required>
+    <div id="authMsg" role="alert"></div>
+    <div class="row" style="justify-content:stretch"><button class="pri" id="authBtn" style="width:100%">Войти</button></div>
+  </form>
+  <p style="text-align:center;margin:14px 0 0"><button class="link" id="authSwitch" type="button">Нет аккаунта? Зарегистрироваться</button></p>
+</section>
+
+<!-- Список -->
+<section id="app" class="hide">
+  <header>
+    <h1>Мои заявки</h1>
+    <div><span id="who" class="meta"></span> <button id="logout" type="button">Выйти</button></div>
+  </header>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Поиск по названию" aria-label="Поиск по названию">
+    <select id="fs" aria-label="Фильтр по статусу">
+      <option value="">Все статусы</option><option>Новая</option><option>В работе</option><option>Завершена</option>
+    </select>
+    <button class="pri" id="add" type="button">Новая заявка</button>
+  </div>
+  <div id="listMsg" role="alert"></div>
+  <div id="list"></div>
+</section>
+</div>
+
+<!-- Форма заявки -->
+<dialog id="dlg">
+  <form id="form" novalidate>
+    <h1 id="dlgTitle">Новая заявка</h1>
+    <label for="f-title">Название</label>
+    <input id="f-title" maxlength="150" required>
+    <label for="f-cat">Категория</label>
+    <select id="f-cat" required>
+      <option value="">Выберите категорию</option><option>Бот</option><option>Интеграция</option><option>Отчёт</option><option>Другое</option>
+    </select>
+    <label for="f-desc">Описание задачи</label>
+    <textarea id="f-desc" required></textarea>
+    <div id="f-status-wrap" class="hide">
+      <label for="f-status">Статус</label>
+      <select id="f-status"><option>Новая</option><option>В работе</option><option>Завершена</option></select>
+    </div>
+    <div id="formMsg" role="alert"></div>
+    <div class="row">
+      <button type="button" id="cancel">Закрыть</button>
+      <button class="pri" id="save">Сохранить</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ====== Настройки Supabase (anon-ключ публичный, секретные ключи сюда НЕ класть) ======
+const SUPABASE_URL = "YOUR-PROJECT";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+// =====================================================================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const STATUS_CLASS = {"Новая":"s-new","В работе":"s-work","Завершена":"s-done"};
+let user = null, items = [], editing = null, saving = false, signup = false;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = d => new Date(d).toLocaleString("ru-RU", {dateStyle:"medium", timeStyle:"short"});
+const show = (el, text, type="err") => { el.innerHTML = text ? `<div class="msg ${type}">${esc(text)}</div>` : ""; };
+
+function errText(e) {
+  const m = (e && e.message || "").toLowerCase();
+  if (m.includes("invalid login")) return "Неверная почта или пароль.";
+  if (m.includes("already registered")) return "Эта почта уже зарегистрирована. Войдите в аккаунт.";
+  if (m.includes("email not confirmed")) return "Подтвердите почту по ссылке из письма и войдите снова.";
+  if (m.includes("failed to fetch") || m.includes("network")) return "Нет связи с сервером. Проверьте интернет и повторите.";
+  if (m.includes("rate limit")) return "Слишком много попыток. Подождите немного.";
+  return "Не удалось выполнить действие. " + (e && e.message ? e.message : "");
+}
+
+// ---------- Авторизация ----------
+function setAuthMode(s) {
+  signup = s;
+  $("authTitle").textContent = s ? "Регистрация" : "Вход";
+  $("authBtn").textContent = s ? "Зарегистрироваться" : "Войти";
+  $("authSwitch").textContent = s ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться";
+  $("pass").autocomplete = s ? "new-password" : "current-password";
+  show($("authMsg"), "");
+}
+$("authSwitch").onclick = () => setAuthMode(!signup);
+
+$("authForm").onsubmit = async e => {
+  e.preventDefault();
+  const btn = $("authBtn"), email = $("email").value.trim(), password = $("pass").value;
+  if (!/^\S+@\S+\.\S+$/.test(email)) return show($("authMsg"), "Введите корректную почту.");
+  if (password.length < 6) return show($("authMsg"), "Пароль должен быть не короче 6 символов.");
+  btn.disabled = true; show($("authMsg"), "");
+  try {
+    if (signup) {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      if (!data.session) { show($("authMsg"), "Аккаунт создан. Подтвердите почту по ссылке из письма и войдите.", "ok"); setAuthMode(false); }
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch (err) { show($("authMsg"), errText(err)); }
+  finally { btn.disabled = false; }
+};
+
+$("logout").onclick = () => sb.auth.signOut();
+
+sb.auth.onAuthStateChange((_ev, session) => {
+  user = session ? session.user : null;
+  $("auth").classList.toggle("hide", !!user);
+  $("app").classList.toggle("hide", !user);
+  if (user) { $("who").textContent = user.email; loadItems(); }
+  else { items = []; $("list").innerHTML = ""; $("pass").value = ""; }
+});
+
+// ---------- Заявки ----------
+async function loadItems() {
+  show($("listMsg"), "");
+  $("list").innerHTML = '<div class="empty">Загрузка…</div>';
+  const { data, error } = await sb.from("requests").select("*").order("created_at", { ascending: false });
+  if (error) { $("list").innerHTML = ""; return show($("listMsg"), "Не удалось загрузить заявки. " + errText(error)); }
+  items = data; render();
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase(), st = $("fs").value;
+  const rows = items.filter(i => (!st || i.status === st) && (!q || i.title.toLowerCase().includes(q)));
+  if (!rows.length) {
+    $("list").innerHTML = `<div class="empty">${items.length ? "Ничего не найдено. Измените поиск или фильтр." : "Заявок пока нет. Нажмите «Новая заявка», чтобы создать первую."}</div>`;
+    return;
+  }
+  $("list").innerHTML = rows.map(i => `
+    <div class="item" tabindex="0" role="button" data-id="${i.id}" aria-label="Открыть заявку ${esc(i.title)}">
+      <b>${esc(i.title)}</b>
+      <div class="meta"><span>${esc(i.category)}</span><span>${fmt(i.created_at)}</span>
+      <span class="badge ${STATUS_CLASS[i.status]}">${esc(i.status)}</span></div>
+    </div>`).join("");
+}
+$("q").oninput = render; $("fs").onchange = render;
+$("list").onclick = e => { const el = e.target.closest(".item"); if (el) openForm(el.dataset.id); };
+$("list").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { const el = e.target.closest(".item"); if (el) { e.preventDefault(); openForm(el.dataset.id); } } };
+$("add").onclick = () => openForm(null);
+$("cancel").onclick = () => $("dlg").close();
+
+function openForm(id) {
+  editing = id ? items.find(i => i.id === id) : null;
+  $("dlgTitle").textContent = editing ? "Заявка" : "Новая заявка";
+  $("f-title").value = editing ? editing.title : "";
+  $("f-cat").value = editing ? editing.category : "";
+  $("f-desc").value = editing ? editing.description : "";
+  $("f-status").value = editing ? editing.status : "Новая";
+  $("f-status-wrap").classList.toggle("hide", !editing);
+  show($("formMsg"), ""); $("save").disabled = false;
+  $("dlg").showModal();
+}
+
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  if (saving) return;                       // защита от повторного нажатия
+  const title = $("f-title").value.trim(), category = $("f-cat").value, description = $("f-desc").value.trim();
+  if (!title || !category || !description) return show($("formMsg"), "Заполните все поля: название, категорию и описание.");
+  saving = true; $("save").disabled = true; $("save").textContent = "Сохранение…"; show($("formMsg"), "");
+  try {
+    let res;
+    if (editing) res = await sb.from("requests").update({ title, category, description, status: $("f-status").value }).eq("id", editing.id).select().single();
+    else res = await sb.from("requests").insert({ title, category, description, user_id: user.id }).select().single();
+    if (res.error) throw res.error;
+    const wasEdit = !!editing;
+    $("dlg").close(); await loadItems();
+    show($("listMsg"), wasEdit ? "Изменения сохранены." : "Заявка создана со статусом «Новая».", "ok");
+    setTimeout(() => show($("listMsg"), ""), 4000);
+  } catch (err) { show($("formMsg"), "Не удалось сохранить. " + errText(err) + " Введённые данные сохранены в форме — попробуйте ещё раз."); }
+  finally { saving = false; $("save").disabled = false; $("save").textContent = "Сохранить"; }
+};
+
+setAuthMode(false);
+sb.auth.getSession().then(({ data }) => { if (!data.session) $("auth").classList.remove("hide"); });
+</script>
+</body>
+</html>
