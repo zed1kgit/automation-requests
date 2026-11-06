@@ -52,6 +52,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
     <input id="email" type="email" autocomplete="email" required>
     <label for="pass">Пароль (минимум 6 символов)</label>
     <input id="pass" type="password" autocomplete="current-password" minlength="6" required>
+    <div id="pass2-wrap" class="hide">
+      <label for="pass2">Повторите пароль</label>
+      <input id="pass2" type="password" autocomplete="new-password" minlength="6">
+    </div>
     <div id="authMsg" role="alert"></div>
     <div class="row" style="justify-content:stretch"><button class="pri" id="authBtn" style="width:100%">Войти</button></div>
   </form>
@@ -103,8 +107,8 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // ====== Настройки Supabase (anon-ключ публичный, секретные ключи сюда НЕ класть) ======
-const SUPABASE_URL = "YOUR-PROJECT";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://bjrspuhxdoqfqkmntxnv.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_3ubliM9-ZteduT-fOPBLNA_GPJ2y6Mv";
 // =====================================================================================
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -133,6 +137,8 @@ function setAuthMode(s) {
   $("authBtn").textContent = s ? "Зарегистрироваться" : "Войти";
   $("authSwitch").textContent = s ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться";
   $("pass").autocomplete = s ? "new-password" : "current-password";
+  $("pass2-wrap").classList.toggle("hide", !s);
+  $("pass2").value = "";
   show($("authMsg"), "");
 }
 $("authSwitch").onclick = () => setAuthMode(!signup);
@@ -142,10 +148,11 @@ $("authForm").onsubmit = async e => {
   const btn = $("authBtn"), email = $("email").value.trim(), password = $("pass").value;
   if (!/^\S+@\S+\.\S+$/.test(email)) return show($("authMsg"), "Введите корректную почту.");
   if (password.length < 6) return show($("authMsg"), "Пароль должен быть не короче 6 символов.");
+  if (signup && password !== $("pass2").value) return show($("authMsg"), "Пароли не совпадают. Проверьте оба поля.");
   btn.disabled = true; show($("authMsg"), "");
   try {
     if (signup) {
-      const { data, error } = await sb.auth.signUp({ email, password });
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
       if (error) throw error;
       if (!data.session) { show($("authMsg"), "Аккаунт создан. Подтвердите почту по ссылке из письма и войдите.", "ok"); setAuthMode(false); }
     } else {
@@ -163,7 +170,7 @@ sb.auth.onAuthStateChange((_ev, session) => {
   $("auth").classList.toggle("hide", !!user);
   $("app").classList.toggle("hide", !user);
   if (user) { $("who").textContent = user.email; loadItems(); }
-  else { items = []; $("list").innerHTML = ""; $("pass").value = ""; }
+  else { items = []; $("list").innerHTML = ""; $("pass").value = ""; $("pass2").value = ""; }
 });
 
 // ---------- Заявки ----------
